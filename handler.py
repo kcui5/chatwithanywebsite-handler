@@ -11,8 +11,11 @@ handler_image = (
 )
 
 @app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
-@web_endpoint()
-def addwebsiteToKnowledge(user_url: str):
+@web_endpoint(method="POST")
+def addwebsiteToKnowledge(req: dict):
+    user_url: str = req["user_url"]
+    print("Received request for: ", user_url)
+
     # Get PDF of website
     import asyncio
     from playwright.async_api import async_playwright
@@ -81,8 +84,11 @@ def addwebsiteToKnowledge(user_url: str):
     return message_file.id
 
 @app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
-@web_endpoint()
-def askWithKnowledge(user_url: str, user_query: str):
+@web_endpoint(method="POST")
+def askWithKnowledge(req: dict):
+    user_url: str = req["user_url"]
+    user_query: str = req["user_query"]
+
     from openai import OpenAI
     client = OpenAI()
 
@@ -95,7 +101,7 @@ def askWithKnowledge(user_url: str, user_query: str):
     from supabase import create_client
     supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
     response = supa.table("urlsToFiles").select("fileID").eq("url", user_url).execute()
-    if len(response) == 0:
+    if len(response.data) == 0:
         return "Error: Could not find file"
     id = response.data[0]["fileID"]
     print("Found file ID: ", id)
