@@ -1,6 +1,10 @@
 from modal import App, Image, Secret, web_endpoint
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = App()
+
+auth_scheme = HTTPBearer()
 
 handler_image = (
     Image.debian_slim()
@@ -10,11 +14,21 @@ handler_image = (
     .run_commands("playwright install && playwright install-deps")
 )
 
-@app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
+@app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite"), Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
 @web_endpoint(method="POST")
-def addwebsiteToKnowledge(req: dict):
+def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+    import os
+    if token.credentials != os.environ["chatwithanywebsite"]:
+        print("Received request with incorrect bearer token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_url: str = req["user_url"]
-    print("Received request for: ", user_url)
+    print("Received request:")
+    print(user_url)
 
     # Get PDF of website
     import asyncio
@@ -94,11 +108,23 @@ def addwebsiteToKnowledge(req: dict):
 
     return "Success"
 
-@app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
+@app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite"), Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
 @web_endpoint(method="POST")
-def askWithKnowledge(req: dict):
+def askWithKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+    import os
+    if token.credentials != os.environ["chatwithanywebsite"]:
+        print("Received request with incorrect bearer token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     user_url: str = req["user_url"]
     user_query: str = req["user_query"]
+    print("Received request:")
+    print(user_url)
+    print(user_query)
 
     from openai import OpenAI
     client = OpenAI()
@@ -108,7 +134,6 @@ def askWithKnowledge(req: dict):
         tools=[{"type": "file_search"}],
     )
 
-    import os
     from supabase import create_client
     supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
     response = supa.table("urlsToFiles").select("fileID").eq("url", user_url).execute()
