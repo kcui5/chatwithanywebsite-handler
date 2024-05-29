@@ -10,7 +10,7 @@ handler_image = (
     .run_commands("playwright install && playwright install-deps")
 )
 
-@app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")], mounts=[Mount.from_local_dir("/Users/kyle/Projects/chatwithanywebsite-handler", remote_path="/root")])
+@app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
 @web_endpoint()
 def addwebsiteToKnowledge(user_url: str):
     # Get PDF of website
@@ -99,7 +99,7 @@ def askWithKnowledge(user_url: str, user_query: str):
         return "Error: Could not find file"
     id = response.data[0]["fileID"]
     print("Found file ID: ", id)
-    
+
     thread = client.beta.threads.create(
         messages=[
             {
