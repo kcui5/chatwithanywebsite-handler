@@ -1,4 +1,4 @@
-from modal import App, Image, Secret, Mount, web_endpoint
+from modal import App, Image, Secret, web_endpoint
 
 app = App()
 
@@ -59,29 +59,40 @@ def addwebsiteToKnowledge(req: dict):
             return pdf_stream
     
     try:
-        pdf_file = asyncio.run(get_full_page_content())
-        if not pdf_file:
-            return "ERROR"
+        pdf = asyncio.run(get_full_page_content())
+        if not pdf:
+            return "Error connecting to website"
+        with open('output.pdf', 'wb') as f:
+            f.write(pdf.read())
+        pdf_file = open("output.pdf", "rb")
     except:
-        return "ERROR"
+        return "Error connecting to website"
 
     # Upload the user provided file to OpenAI
-    from openai import OpenAI
-    client = OpenAI()
-    message_file = client.files.create(
-        file=pdf_file, purpose="assistants"
-    )
-    print("Created file with ID: ", message_file.id)
+    message_file = None
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        message_file = client.files.create(
+            file=pdf_file, purpose="assistants"
+        )
+        print("Created file with ID: ", message_file.id)
+    except:
+        return "Error connecting to knowledge base"
 
     # Upload file ID to supabase
-    import os
-    from supabase import create_client
-    supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
-    # Check if table already contains url
-    supa.table("urlsToFiles").insert({"url": user_url, "fileID": message_file.id}).execute()
-    response = supa.table("urlsToFiles").select("*").execute()
-    print("Supa table: ", response)
-    return message_file.id
+    try:
+        import os
+        from supabase import create_client
+        supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        # Check if table already contains url
+        supa.table("urlsToFiles").insert({"url": user_url, "fileID": message_file.id}).execute()
+        response = supa.table("urlsToFiles").select("*").execute()
+        print("Supa table: ", response)
+    except:
+        return "Error connecting to database"
+
+    return "Success"
 
 @app.function(image=handler_image, secrets=[Secret.from_name("chatwithanywebsite-openai-key"), Secret.from_name("supabase_url"), Secret.from_name("supabase_key")])
 @web_endpoint(method="POST")
