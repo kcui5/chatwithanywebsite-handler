@@ -1,5 +1,5 @@
 from modal import App, Image, Secret, web_endpoint
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = App()
@@ -33,25 +33,6 @@ def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depen
     # Get PDF of website
     import asyncio
     from playwright.async_api import async_playwright
-    from io import BytesIO
-    async def auto_scroll(page):
-        await page.evaluate('''
-            async function() {
-                await new Promise(resolve => {
-                    let totalHeight = 0;
-                    const distance = 100;
-                    const timer = setInterval(() => {
-                        const scrollHeight = document.body.scrollHeight;
-                        window.scrollBy(0, distance);
-                        totalHeight += distance;
-                        if (totalHeight >= scrollHeight) {
-                            clearInterval(timer);
-                            resolve();
-                        }
-                    }, 100);
-                });
-            }
-        ''')
     
     pdf_file = None
     async def get_full_page_content(): 
@@ -60,24 +41,24 @@ def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depen
             page = await browser.new_page()
 
             await page.goto(user_url, wait_until='networkidle')
-            await auto_scroll(page)
+            await page.pdf(path="output.pdf", format='A4', outline=True, print_background=True)
 
-            pdf_stream = BytesIO()
-            pdf_bytes = await page.pdf(format='A4', print_background=True)
-            pdf_stream.write(pdf_bytes)
-
-            # Ensure the buffer's position is at the start
-            pdf_stream.seek(0)
             await browser.close()
-
-            return pdf_stream
+            return True
+        
+    async def get_full_page_content_with_timeout():
+        try:
+            # Run the async function with a timeout of 15 seconds
+            result = await asyncio.wait_for(get_full_page_content(), timeout=15.0)
+            return result
+        except asyncio.TimeoutError:
+            print("Timed out")
+            return False
     
     try:
-        pdf = asyncio.run(get_full_page_content())
+        pdf = asyncio.run(get_full_page_content_with_timeout())
         if not pdf:
             return "Error connecting to website"
-        with open('output.pdf', 'wb') as f:
-            f.write(pdf.read())
         pdf_file = open("output.pdf", "rb")
     except:
         return "Error connecting to website"
@@ -144,6 +125,12 @@ def askWithKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depends(au
 
     thread = client.beta.threads.create(
         messages=[
+            {
+                "role": "system",
+                "content": """You are a website chatbot. You will be given the website in a file in your knowledge base
+                and your job is to look at the website for relevant content that users ask about
+                and respond with accurate information. Any user queries unrelated to the website should be rejected.""",
+            },
             {
                 "role": "user",
                 "content": user_query,
