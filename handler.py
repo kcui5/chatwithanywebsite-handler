@@ -2,7 +2,7 @@ from modal import App, Image, Secret, web_endpoint
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-app = App()
+app = App("chatwithanywebsite-handler")
 
 auth_scheme = HTTPBearer()
 
@@ -111,7 +111,7 @@ def askWithKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depends(au
     client = OpenAI()
 
     assistant = client.beta.assistants.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         tools=[{"type": "file_search"}],
     )
 
@@ -126,10 +126,14 @@ def askWithKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depends(au
     thread = client.beta.threads.create(
         messages=[
             {
-                "role": "system",
-                "content": """You are a website chatbot. You will be given the website in a file in your knowledge base
+                "role": "assistant",
+                "content": """You are an agent designed to answer questions about websites.
+                You will be given the website in a PDF file in your knowledge base
                 and your job is to look at the website for relevant content that users ask about
-                and respond with accurate information. Any user queries unrelated to the website should be rejected.""",
+                and respond with accurate information. 
+                Do not mention the website as a document, just answer directly as an agent for the website.
+                Any user queries unrelated to the website should be rejected.
+                """,
             },
             {
                 "role": "user",
