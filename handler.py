@@ -49,7 +49,7 @@ def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depen
     async def get_full_page_content_with_timeout():
         try:
             # Run the async function with a timeout of 15 seconds
-            result = await asyncio.wait_for(get_full_page_content(), timeout=15.0)
+            result = await asyncio.wait_for(get_full_page_content(), timeout=25.0)
             return result
         except asyncio.TimeoutError:
             print("Timed out")
@@ -152,10 +152,10 @@ def askWithKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depends(au
     messages = list(client.beta.threads.messages.list(thread_id=thread.id, run_id=run.id))
 
     message_content = messages[0].content[0].text
-    annotations = message_content.annotations
+    # annotations = message_content.annotations
     # citations = []
-    for index, annotation in enumerate(annotations):
-        message_content.value = message_content.value.replace(annotation.text, f"[{index}]")
+    # for index, annotation in enumerate(annotations):
+    #     message_content.value = message_content.value.replace(annotation.text, f"[{index}]")
         # if file_citation := getattr(annotation, "file_citation", None):
             # cited_file = client.files.retrieve(file_citation.file_id)
             # citations.append(f"[{index}] {cited_file.filename}")
