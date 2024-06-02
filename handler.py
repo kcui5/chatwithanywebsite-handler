@@ -48,7 +48,7 @@ def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depen
         
     async def get_full_page_content_with_timeout():
         try:
-            # Run the async function with a timeout of 15 seconds
+            # Run the async function with a timeout of 25 seconds
             result = await asyncio.wait_for(get_full_page_content(), timeout=25.0)
             return result
         except asyncio.TimeoutError:
