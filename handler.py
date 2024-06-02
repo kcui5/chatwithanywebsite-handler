@@ -30,6 +30,20 @@ def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depen
     print("Received request:")
     print(user_url)
 
+    # Check if URL already in supabase
+    import os
+    from supabase import create_client
+    try:
+        supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        response = supa.table("urlsToFiles").select("*").eq("url", user_url).limit(1).execute()
+
+        if len(response.data) > 0:
+            # Contains URL already
+            print("Found URL in database")
+            return "Success"
+        print("Did not find URL in database...")
+    except:
+        return "Error connecting to database"
     # Get PDF of website
     import asyncio
     from playwright.async_api import async_playwright
@@ -77,10 +91,6 @@ def addwebsiteToKnowledge(req: dict, token: HTTPAuthorizationCredentials = Depen
 
     # Upload file ID to supabase
     try:
-        import os
-        from supabase import create_client
-        supa = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
-        # Check if table already contains url
         supa.table("urlsToFiles").insert({"url": user_url, "fileID": message_file.id}).execute()
         response = supa.table("urlsToFiles").select("*").execute()
         print("Supa table: ", response)
